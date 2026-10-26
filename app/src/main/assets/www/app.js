@@ -31,6 +31,7 @@ const I = {
   text: ico('<path d="M5 6V4h14v2M12 4v16M9 20h6"/>'),
   x: ico('<path d="M6 6l12 12M18 6L6 18"/>'),
   check: ico('<path d="M5 13l4 4 10-10"/>'),
+  upload: ico('<path d="M12 16V4M6 10l6-6 6 6M4 20h16"/>'),
   ghost: ico('<path d="M5 20V11a7 7 0 0 1 14 0v9l-3-2-2 2-2-2-2 2-2-2z"/><circle cx="9.5" cy="11" r=".6" fill="currentColor"/><circle cx="14.5" cy="11" r=".6" fill="currentColor"/>')
 };
 
@@ -78,8 +79,8 @@ const DB = (() => {
 })();
 
 /* ---------- model ---------- */
-const mkProject = name => ({ id: uid(), name, updated: Date.now(), sprites: [], texts: [], scripts: defaultScripts(), playerId: null });
-const defaultScripts = () => [{ id: uid(), name: 'kontrol.js', code: DEFAULT_JS }, { id: uid(), name: 'kontrol.css', code: DEFAULT_CSS }];
+const mkProject = name => ({ id: uid(), name, updated: Date.now(), sprites: [], texts: [], sounds: [], scripts: defaultScripts(), playerId: null });
+const defaultScripts = () => [{ id: uid(), name: 'kontrol.js', code: DEFAULT_JS }, { id: uid(), name: 'kontrol.css', code: DEFAULT_CSS }, { id: uid(), name: 'utama.cd', code: DEFAULT_CD }];
 const mkSprite = name => ({ id: uid(), name, scale: 1, anims: [] });
 const mkAnim = name => ({ id: uid(), name, fps: 10, frames: [] });
 
@@ -163,10 +164,10 @@ async function seedExample() {
   sp.anims.push(idle, walk); p.sprites.push(sp); p.playerId = sp.id;
   p.texts.push(
     { id: uid(), text: 'Geser joystick buat jalan', x: 190, y: 120, size: 22, color: '#ffffff' },
-    { id: uid(), text: 'Ketuk teks ini! \u{1F446}', x: 335, y: 238, size: 22, color: '#3ee8c8' },
+    { id: uid(), name: 'ketuk', text: 'Ketuk teks ini! \u{1F446}', x: 335, y: 238, size: 22, color: '#3ee8c8' },
     { id: uid(), text: 'Kamu sampai! \u{1F389}', x: 1550, y: 196, size: 26, color: '#ffd166' }
   );
-  p.scripts.push({ id: uid(), name: 'contoh.js', code: EXAMPLE_JS });
+  p.scripts.find(f => f.name === 'utama.cd').code = EXAMPLE_CD;
   return p;
 }
 const seededFlag = set => { try { if (set) localStorage.setItem('ps_seeded', '1'); return localStorage.getItem('ps_seeded') === '1'; } catch (e) { return false; } };
@@ -192,15 +193,18 @@ async function showHome() {
       '<button class="icon-btn sm" data-act="dup-proj" data-id="' + p.id + '">' + I.copy + '</button>' +
       '<button class="icon-btn sm danger" data-act="del-proj" data-id="' + p.id + '">' + I.trash + '</button></div></div>';
   }).join('');
-  $('#app').innerHTML = '<div class="home"><div class="home-head"><div class="logo">' + I.ghost + '</div><div><h1>ProSprite</h1><p>Bikin sprite, atur animasi, langsung coba jadi game platformer</p></div></div>' +
-    '<div class="proj-grid"><button class="pcard newcard" data-act="new-proj"><div><div class="plus">' + I.plus + '</div><b>Proyek baru</b><div class="small">Kosong, siap diisi</div></div></button>' + cards + '</div></div>';
+  const ht = S.homeTab || 'proj';
+  const tabs = [['proj', 'Proyek'], ['game', 'Game'], ['akun', 'Akun']].map(t => '<button class="' + (ht === t[0] ? 'on' : '') + '" data-act="home-tab" data-t="' + t[0] + '">' + t[1] + '</button>').join('');
+  $('#app').innerHTML = '<div class="home"><div class="home-head"><div class="logo">' + I.ghost + '</div><div><h1>ProSprite</h1><p>Bikin sprite, atur animasi, coba jadi game, lalu publish</p></div><div class="grow"></div><div class="tabs htabs">' + tabs + '</div><button class="btn" data-act="tutorial">Tutorial</button></div>' +
+    '<div id="homebody">' + (ht === 'proj' ? '<div class="proj-grid"><button class="pcard newcard" data-act="new-proj"><div><div class="plus">' + I.plus + '</div><b>Proyek baru</b><div class="small">Kosong, siap diisi</div></div></button>' + cards + '</div>' : '') + '</div></div>';
+  if (ht === 'game') Game.renderGame($('#homebody')); else if (ht === 'akun') Game.renderAkun($('#homebody'));
 }
 
 /* ---------- editor: render ---------- */
 let ST = null, RO = null;
 
 function openProject(p) {
-  p.sprites = p.sprites || []; p.texts = p.texts || []; p.scripts = p.scripts || defaultScripts();
+  p.sprites = p.sprites || []; p.texts = p.texts || []; p.scripts = p.scripts || defaultScripts(); p.sounds = p.sounds || [];
   S.project = p; S.tab = 'anim'; S.textId = null; S.camX = 0; S.playing = true; S.frame = 0; S.fileId = null;
   const sp = playerSprite(p) || p.sprites[0];
   S.spriteId = sp ? sp.id : null;
@@ -218,6 +222,7 @@ function renderEditor() {
     '<button class="icon-btn" data-act="home">' + I.back + '</button>' +
     '<button class="proj-name" data-act="rename-proj">' + esc(p.name) + '</button><div class="grow"></div>' +
     '<button class="btn" data-act="code">' + I.code + '<span>Kode</span></button>' +
+    '<button class="btn" data-act="publish">' + I.upload + '<span>Publish</span></button>' +
     '<button class="btn primary" data-act="play">' + I.play + '<span>Coba</span></button></header>' +
     '<div class="ed-main"><aside class="panel left">' + leftHTML() + '</aside><section class="center">' + centerHTML() + '</section><aside class="panel right">' + rightHTML() + '</aside></div></div>';
   const st = $('#strip'); if (st) st.scrollLeft = keepStrip;
@@ -245,10 +250,12 @@ function leftHTML() {
 
 function centerHTML() {
   const an = curAnim(), isA = S.tab === 'anim';
-  let top = '<div class="seg"><div class="tabs"><button class="' + (isA ? 'on' : '') + '" data-act="tab" data-tab="anim">Animasi</button><button class="' + (!isA ? 'on' : '') + '" data-act="tab" data-tab="stage">Panggung</button></div><div class="grow"></div>';
+  let top = '<div class="seg"><div class="tabs"><button class="' + (isA ? 'on' : '') + '" data-act="tab" data-tab="anim">Animasi</button><button class="' + (S.tab === 'stage' ? 'on' : '') + '" data-act="tab" data-tab="stage">Panggung</button><button class="' + (S.tab === 'sound' ? 'on' : '') + '" data-act="tab" data-tab="sound">Suara</button></div><div class="grow"></div>';
   if (isA) { if (an && an.frames.length > 1) top += '<button class="btn sm" data-act="toggle-play" id="playbtn">' + (S.playing ? I.pause + '<span>Jeda</span>' : I.play + '<span>Putar</span>') + '</button>'; }
+  else if (S.tab === 'sound') top += '<button class="btn sm" data-act="add-sound">' + I.plus + '<span>Suara</span></button>';
   else top += '<button class="btn sm" data-act="add-text">' + I.text + '<span>Teks</span></button>';
   top += '</div>';
+  if (S.tab === 'sound') return top + soundHTML();
   let wrap = '<div class="stage-wrap"><canvas id="stage"></canvas>';
   if (isA) {
     if (!an || !an.frames.length) {
@@ -270,12 +277,22 @@ function centerHTML() {
   return top + wrap + strip;
 }
 
+function soundHTML() {
+  const L = S.project.sounds || [];
+  const rows = L.map(x => '<div class="srow"><button class="icon-btn sm" data-act="play-sound" data-id="' + x.id + '">' + I.play + '</button><input class="input" data-f="snd-name" data-id="' + x.id + '" value="' + esc(x.name) + '" maxlength="20"><button class="icon-btn sm danger" data-act="del-sound" data-id="' + x.id + '">' + I.trash + '</button></div>').join('');
+  const syn = (typeof Synth !== 'undefined' ? Synth.names : []).map(n => '<button class="chip" data-act="play-synth" data-n="' + n + '">' + n + '</button>').join('');
+  return '<div class="soundwrap"><div class="small" style="margin-bottom:8px">Impor file suara (mp3/ogg/wav, maks 1,5 MB). Nama di sini dipakai di kode: <code>sfx.putar("nama")</code> atau <code>music.putar("nama")</code>.</div>' +
+    (rows || '<div class="empty-hint">Belum ada suara.<br>Tekan <b>+ Suara</b> di atas.</div>') +
+    '<div class="sep"></div><div class="small">Suara bawaan (tanpa file), ketuk buat dengar:</div><div class="chips">' + syn + '</div></div>';
+}
 function rightHTML() {
+  if (S.tab === 'sound') return '<div class="empty-hint">Suara bisa dipakai lewat kode Cmode:<br><br><code>sfx.putar("lompat")</code><br><code>music.putar("latar")</code></div>';
   const sp = curSprite(), an = curAnim();
   if (S.tab === 'stage') {
     const t = curText();
     if (!t) return '<div class="empty-hint">Ketuk teks di panggung buat mengubahnya, atau tekan <b>Teks</b> buat nambah.<br><br>Di mode Coba, teks dan karakter bisa diklik lewat skrip.</div>';
-    return '<label>Isi teks</label><input class="input" data-f="t-text" value="' + esc(t.text) + '" maxlength="60">' +
+    return '<label>ID untuk kode</label><input class="input" data-f="t-name" value="' + esc(t.name || '') + '" maxlength="20" placeholder="mis. ketuk">' +
+      '<label>Isi teks</label><input class="input" data-f="t-text" value="' + esc(t.text) + '" maxlength="60">' +
       '<label>Ukuran <span class="val" id="v-tsize">' + t.size + '</span></label><input type="range" min="12" max="72" value="' + t.size + '" data-f="t-size">' +
       '<label>Warna</label><input type="color" value="' + t.color + '" data-f="t-color"><div class="sep"></div>' +
       '<button class="btn danger block" data-act="del-text">' + I.trash + '<span>Hapus teks</span></button>';
@@ -446,6 +463,7 @@ const ACTS = {
     if (await askConfirm('Hapus proyek "' + p.name + '"? Tidak bisa dibalikin.')) { await DB.del(p.id); showHome(); }
   },
   home: () => showHome(),
+  'home-tab': b => { S.homeTab = b.dataset.t; showHome(); },
   'rename-proj': async () => { const n = await askText('Nama proyek', S.project.name); if (n) { S.project.name = n; dirty(); $('.proj-name').textContent = n; } },
   tab: b => { S.tab = b.dataset.tab; S.textId = null; renderEditor(); },
   'add-sprite': async () => {
@@ -477,11 +495,18 @@ const ACTS = {
   'del-anim': async () => { const sp = curSprite(), an = curAnim(); if (await askConfirm('Hapus animasi "' + an.name + '"?')) { sp.anims = sp.anims.filter(a => a !== an); S.animId = sp.anims[0] ? sp.anims[0].id : null; S.frame = 0; dirty(); renderEditor(); } },
   'del-sprite': async () => { const sp = curSprite(); if (await askConfirm('Hapus sprite "' + sp.name + '" beserta semua animasinya?')) { const p = S.project; p.sprites = p.sprites.filter(s => s !== sp); if (p.playerId === sp.id) p.playerId = null; const n = p.sprites[0]; S.spriteId = n ? n.id : null; S.animId = n && n.anims[0] ? n.anims[0].id : null; S.frame = 0; dirty(); renderEditor(); } },
   'add-text': () => {
-    const t = { id: uid(), text: 'Halo!', x: Math.round(S.camX + (ST ? ST.w / (ST.h / World.H) / 2 : 300)), y: 150, size: 28, color: '#ffffff' };
+    const t = { id: uid(), name: 'teks' + (S.project.texts.length + 1), text: 'Halo!', x: Math.round(S.camX + (ST ? ST.w / (ST.h / World.H) / 2 : 300)), y: 150, size: 28, color: '#ffffff' };
     S.project.texts.push(t); S.textId = t.id; dirty(); renderRight();
   },
   'del-text': () => { S.project.texts = S.project.texts.filter(t => t.id !== S.textId); S.textId = null; dirty(); renderRight(); },
+  'add-sound': () => { const inp = $('#audio-in'); inp.value = ''; inp.click(); },
+  'play-sound': b => { const x = S.project.sounds.find(q => q.id === b.dataset.id); if (x) { const a = new Audio(x.src); a.play().catch(() => toast('Tidak bisa diputar')); } },
+  'play-synth': b => { if (typeof Synth !== 'undefined') Synth.play(b.dataset.n, 1); },
+  'del-sound': async b => { const x = S.project.sounds.find(q => q.id === b.dataset.id); if (x && await askConfirm('Hapus suara "' + x.name + '"?')) { S.project.sounds = S.project.sounds.filter(q => q !== x); dirty(); renderEditor(); } },
   play: () => Play.start(S.project),
+  publish: () => Game.publish(),
+  tutorial: () => Tutorial.open(),
+  'file-add-cd': () => addFile('cd'),
   code: () => showCode(),
   /* kode */
   'code-back': () => { renderEditor(); },
@@ -519,6 +544,10 @@ const HELP_TEXT = [
   '',
   'Pro.jump()            suruh karakter lompat',
   'Pro.say("teks", ms)   gelembung ucapan di atas karakter',
+  'Pro.effect("Nama", x, y, ms, {anchor:"center"})',
+  '                      tampilkan animasi lain (mis. "Startled") di posisi x,y',
+  '                      selama ms; return null kalau animasinya tidak ada',
+  'teks.visible = false  sembunyikan teks (true = tampil lagi)',
   'Pro.toast("teks")     pesan kecil di atas layar',
   'Pro.listen(window, "keydown", fn)',
   '                      pasang listener; otomatis dicabut saat keluar',
@@ -533,34 +562,43 @@ const HELP_TEXT = [
 /* ---------- editor kode ---------- */
 const curFile = () => (S.project.scripts.find(f => f.id === S.fileId)) || null;
 const isCss = f => /\.css$/i.test(f.name);
+const isCd = f => /\.cd$/i.test(f.name);
 function showCode() { stopStage(); renderCode(); }
 function renderCode() {
   S.view = 'code';
   const p = S.project;
   let f = curFile() || p.scripts[0] || null; S.fileId = f ? f.id : null;
-  const files = p.scripts.map(x => '<button class="file ' + (x === f ? 'on' : '') + '" data-act="file-sel" data-id="' + x.id + '"><span class="dot" style="background:' + (isCss(x) ? '#2bb3ff' : '#ffd166') + '"></span><span class="nm" data-nm="' + x.id + '">' + esc(x.name) + '</span></button>').join('');
+  const files = p.scripts.map(x => '<button class="file ' + (x === f ? 'on' : '') + '" data-act="file-sel" data-id="' + x.id + '"><span class="dot" style="background:' + (isCss(x) ? '#2bb3ff' : isCd(x) ? '#3ee8c8' : '#ffd166') + '"></span><span class="nm" data-nm="' + x.id + '">' + esc(x.name) + '</span></button>').join('');
   const keys = ['Tab', '{', '}', '(', ')', '[', ']', ';', '=', '"', "'", '<', '>', '/', '.', ',', ':', '!', '+', '-', '*', '&', '|'];
   $('#app').innerHTML = '<div class="codeview"><header class="topbar"><button class="icon-btn" data-act="code-back">' + I.back + '</button><b style="margin-left:4px">Kode</b><span class="small" style="margin-left:6px">JS + CSS proyek ini</span><div class="grow"></div>' +
-    '<button class="btn" data-act="code-help">Bantuan API</button><button class="btn primary" data-act="play">' + I.play + '<span>Coba</span></button></header>' +
+    '<button class="btn" data-act="tutorial">Tutorial Cmode</button><button class="btn" data-act="code-help">API JS</button><button class="btn primary" data-act="play">' + I.play + '<span>Coba</span></button></header>' +
     '<div class="code-main"><aside class="panel"><div class="ph"><span>File</span></div>' + (files || '<div class="empty-hint">Belum ada file.</div>') +
-    '<div class="sep"></div><div class="row"><button class="btn sm grow" data-act="file-add-js">+ JS</button><button class="btn sm grow" data-act="file-add-css">+ CSS</button></div>' +
+    '<div class="sep"></div><div class="row"><button class="btn sm grow" data-act="file-add-js">+ JS</button><button class="btn sm grow" data-act="file-add-css">+ CSS</button><button class="btn sm grow" data-act="file-add-cd">+ CD</button></div>' +
     '<button class="btn sm block" style="margin-top:6px" data-act="file-reset">Pasang kontrol bawaan</button></aside>' +
     '<section class="ecol">' + (f ? '<div class="fname"><input class="input" data-f="file-name" value="' + esc(f.name) + '" maxlength="32"><button class="icon-btn danger" data-act="file-del">' + I.trash + '</button></div>' +
       '<textarea id="code" data-f="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">' + esc(f.code) + '</textarea>' +
-      '<div class="keys">' + keys.map(k => '<button data-ins="' + esc(k) + '">' + esc(k) + '</button>').join('') + '</div>'
+      '<div id="cderr" class="cderr"></div><div class="keys">' + keys.map(k => '<button data-ins="' + esc(k) + '">' + esc(k) + '</button>').join('') + '</div>'
       : '<div class="empty-hint" style="margin:auto">Tidak ada file. Tambah file JS atau CSS di kiri.<br>Kalau kontrol bawaan dihapus, tombol "Pasang kontrol bawaan" bisa memasangnya lagi.</div>') +
     '</section></div></div>';
+  checkCd();
+}
+function checkCd() {
+  const el = $('#cderr'), f = curFile(); if (!el) return;
+  if (!f || !isCd(f)) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const r = Cmode.check(f.code, f.name);
+  el.className = 'cderr ' + (r ? 'bad' : 'ok'); el.textContent = r ? 'Baris ' + r.line + ': ' + r.message : 'Cmode OK: tidak ada kesalahan';
 }
 async function addFile(type) {
-  const n = await askText(type === 'js' ? 'Nama file JS' : 'Nama file CSS', type === 'js' ? 'skrip.js' : 'gaya.css'); if (!n) return;
+  const n = await askText('Nama file ' + type.toUpperCase(), type === 'js' ? 'skrip.js' : type === 'css' ? 'gaya.css' : 'level.cd'); if (!n) return;
   const name = new RegExp('\\.' + type + '$', 'i').test(n) ? n : n + '.' + type;
-  const f = { id: uid(), name, code: type === 'js' ? '// Skrip tambahan\n// Pro.on("update", function (dt) { });\n' : '/* Gaya tambahan */\n' };
+  const f = { id: uid(), name, code: type === 'js' ? '// Skrip tambahan\n// Pro.on("update", function (dt) { });\n' : type === 'css' ? '/* Gaya tambahan */\n' : '{-- Cmode --}\nkodule player impor\n\ndef mulai():\n    player.bicara("Halo!")\n' };
   S.project.scripts.push(f); S.fileId = f.id; dirty(); renderCode();
 }
 function insertAtCursor(text) {
   const ta = $('#code'); if (!ta) return;
   const a = ta.selectionStart, b = ta.selectionEnd;
-  ta.setRangeText(text === 'Tab' ? '  ' : text, a, b, 'end');
+  ta.setRangeText(text === 'Tab' ? '    ' : text, a, b, 'end');
   ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
 }
 
@@ -616,9 +654,11 @@ function onInput(e) {
     case 'a-name': an.name = t.value.slice(0, 24); setNm(an.id, an.name || '...'); break;
     case 's-name': sp.name = t.value.slice(0, 24); setNm(sp.id, sp.name || '...'); break;
     case 't-text': tx.text = t.value; break;
+    case 'snd-name': { const x = S.project.sounds.find(q => q.id === t.dataset.id); if (x) x.name = t.value.replace(/[^\w]/g, '').slice(0, 20); break; }
+    case 't-name': tx.name = t.value.replace(/[^\w]/g, '').slice(0, 20); break;
     case 't-size': tx.size = +t.value; $('#v-tsize').textContent = tx.size; break;
     case 't-color': tx.color = t.value; break;
-    case 'code': { const fl = curFile(); if (fl) fl.code = t.value; dirty(700); return; }
+    case 'code': { const fl = curFile(); if (fl) fl.code = t.value; dirty(700); checkCd(); return; }
     case 'file-name': { const fl = curFile(); if (fl) { fl.name = t.value; setNm(fl.id, fl.name || '...'); } break; }
   }
   dirty();
@@ -630,6 +670,7 @@ function onClick(e) {
 }
 window.onAndroidBack = function () {
   if (Play.active) { Play.stop(); return true; }
+  if (Tutorial.active) { Tutorial.close(); return true; }
   const dw = $('.drawwrap'); if (dw) { dw.dispatchEvent(new Event('dismiss')); return true; }
   const mods = $$('#modal-root .modal-back'); if (mods.length) { mods[mods.length - 1].dispatchEvent(new Event('dismiss')); return true; }
   if (S.view === 'code') { renderEditor(); return true; }
@@ -647,6 +688,17 @@ const App = {
     document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
     window.addEventListener('pagehide', flush);
     $('#file-in').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) importFiles(fs); });
+    $('#audio-in').addEventListener('change', async e => {
+      const fs = [...e.target.files]; e.target.value = ''; if (!S.project) return;
+      for (const f of fs) {
+        if (f.size > 1.5 * 1024 * 1024) { toast(f.name + ' kebesaran (maks 1,5 MB)', 3500); continue; }
+        const src = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+        let nm = f.name.replace(/\.[^.]+$/, '').replace(/[^\w]/g, '').slice(0, 20) || 'suara'; const base = nm; let n = 2;
+        while (S.project.sounds.some(q => q.name === nm)) nm = base + n++;
+        S.project.sounds.push({ id: uid(), name: nm, src });
+      }
+      dirty(); renderEditor(); toast('Suara ditambahkan');
+    });
     try {
       const all = await DB.all();
       if (!all.some(p => p.id === 'example') && !seededFlag()) { await DB.put(await seedExample()); seededFlag(true); }

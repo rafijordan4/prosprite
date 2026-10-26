@@ -14,7 +14,14 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import android.webkit.JavascriptInterface;
+
 import java.io.ByteArrayInputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
+import java.util.Iterator;
 import java.io.InputStream;
 import java.util.HashMap;
 
@@ -90,6 +97,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        web.addJavascriptInterface(new Bridge(), "Native");
         web.loadUrl("https://" + HOST + "/index.html");
     }
 
@@ -160,5 +168,59 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (web != null) web.destroy();
         super.onDestroy();
+    }
+
+    /** Jembatan HTTP untuk login GitHub (github.com tidak mengizinkan CORS). Hanya host GitHub. */
+    public class Bridge {
+        private boolean okHost(String url) {
+            try {
+                Uri u = Uri.parse(url);
+                String h = u.getHost();
+                return "https".equals(u.getScheme()) && h != null
+                        && (h.equals("github.com") || h.equals("api.github.com"));
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
+        public void openUrl(String url) {
+            if (!"https://github.com/login/device".equals(url) && !(url != null && url.startsWith("https://github.com/login/device"))) return;
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+            } catch (Exception e) { /* abaikan */ }
+        }
+
+        @JavascriptInterface
+        public void http(final String id, final String method, final String url, final String headersJson, final String body) {
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    int status = 0; String text = "";
+                    try {
+                        if (!okHost(url)) throw new Exception("host tidak diizinkan");
+                        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                        c.setRequestMethod("GET".equals(method) ? "GET" : "POST");
+                        c.setConnectTimeout(15000); c.setReadTimeout(20000);
+                        JSONObject h = new JSONObject(headersJson == null || headersJson.isEmpty() ? "{}" : headersJson);
+                        Iterator<String> it = h.keys();
+                        while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.getString(k)); }
+                        if (body != null && !body.isEmpty() && !"GET".equals(method)) {
+                            c.setDoOutput(true);
+                            OutputStream o = c.getOutputStream(); o.write(body.getBytes("UTF-8")); o.close();
+                        }
+                        status = c.getResponseCode();
+                        InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
+                        if (in != null) {
+                            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                            byte[] buf = new byte[4096]; int n;
+                            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                            text = bo.toString("UTF-8");
+                        }
+                    } catch (Exception e) { status = 0; text = "{\"error\":\"network\",\"error_description\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}"; }
+                    final String js = "window.__nativeHttp(" + JSONObject.quote(id) + "," + status + "," + JSONObject.quote(text) + ")";
+                    runOnUiThread(new Runnable() { @Override public void run() { if (web != null) web.evaluateJavascript(js, null); } });
+                }
+            }).start();
+        }
     }
 }

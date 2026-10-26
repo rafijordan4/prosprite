@@ -19,6 +19,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Android SDK sudah terpasang di runner; cukup pastikan lisensinya diterima
       - name: Terima lisensi SDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
@@ -37,7 +38,7 @@ jobs:
           name: ProSprite-APK
           path: ProSprite.apk
 
-      - name: Publish release
+      - name: Publish release (biar APK bisa diunduh langsung dari HP)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}

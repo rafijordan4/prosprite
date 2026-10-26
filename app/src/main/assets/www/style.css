@@ -173,3 +173,45 @@ textarea#code:focus{border-color:rgba(62,232,200,.5)}
   background:rgba(11,15,26,.72);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);font-weight:700;color:#fff}
 .pro-exit svg{width:18px;height:18px}
 .pro-tag{position:absolute;top:16px;right:max(16px,env(safe-area-inset-right));z-index:3;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);background:rgba(11,15,26,.55);padding:4px 10px;border-radius:99px;pointer-events:none}
+
+/* ===== v3: Suara, tutorial, Game, Akun, HUD Cmode ===== */
+.htabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px}
+.htabs button{padding:6px 16px;border-radius:7px;font-weight:600;color:var(--muted)}
+.htabs button.on{background:var(--panel2);color:var(--text)}
+.soundwrap{flex:1;overflow:auto;padding:14px}
+.srow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.srow .input{flex:1}
+code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:.92em}
+.cderr{padding:6px 12px;font-size:12px;font-family:ui-monospace,monospace;border-top:1px solid var(--line)}
+.cderr.ok{color:var(--accent)} .cderr.bad{color:#ff8fa0;background:rgba(255,93,115,.1)}
+.tutwrap{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column}
+.tut-main{flex:1;display:flex;min-height:0}
+.tnav{width:130px;border-right:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:6px;overflow:auto}
+.tnav button{text-align:left;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:600}
+.tnav button.on{background:var(--panel2);color:var(--text)}
+.tbody{flex:1;overflow:auto;padding:16px 22px 60px;line-height:1.55;font-size:14px}
+.tbody h2{margin:0 0 8px} .tbody h3{margin:18px 0 6px}
+.tcode{background:#0a0e1a;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow:auto;font:12.5px/1.5 ui-monospace,Menlo,monospace;white-space:pre;margin:6px 0}
+.tex{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
+.trow{display:flex;gap:8px;margin-top:4px}
+.ttab{border-collapse:collapse;width:100%} .ttab td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.tmod{border-top:1px solid var(--line);margin-top:16px;padding-top:4px}
+.tmod h3 small{color:var(--muted);font-weight:400;margin-left:6px}
+.tfn{margin:10px 0} .tfn .sig{color:var(--accent);background:none;padding:0;font-size:13px}
+.gate{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 20px;text-align:center}
+.acct{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.avatar{width:48px;height:48px;border-radius:50%}
+.ucode{font:700 34px ui-monospace,monospace;letter-spacing:.14em;margin:8px 0 12px;color:var(--accent)}
+.gcard .pthumb img{width:100%;height:100%;object-fit:contain}
+/* HUD Cmode (di dalam mode Coba) */
+.cm-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+.cm-hud{position:absolute;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.7);transform:translate(-50%,-50%);white-space:nowrap}
+.cm-bar{position:absolute;height:12px;background:rgba(0,0,0,.5);border-radius:6px;overflow:hidden;transform:translate(-50%,-50%)}
+.cm-bar i{display:block;height:100%;background:#ff6b81}
+.cm-btn{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);padding:10px 18px;border-radius:12px;background:var(--grad);color:#06121a;font-weight:700}
+.cm-btn:disabled{opacity:.4}
+.cm-dialog{position:absolute;left:8%;right:8%;bottom:14px;pointer-events:auto;background:rgba(10,14,26,.92);border:1px solid var(--line);border-radius:14px;padding:12px 16px;color:#fff;z-index:4}
+.cm-dialog b{display:block;color:var(--accent);margin-bottom:4px}
+.cm-choices{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.cm-choices button{padding:8px 14px;border-radius:10px;background:var(--panel2);color:#fff;font-weight:600}
+.cm-flash{position:absolute;inset:0;pointer-events:none;z-index:3}
