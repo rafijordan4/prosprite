@@ -20,12 +20,19 @@ const World = {
   stars: Array.from({ length: 70 }, (_, i) => ({ x: (i * 97.13) % 1000, y: (i * 53.7) % 250, r: 0.6 + (i % 4) * 0.35, a: 0.35 + (i % 5) * 0.12 })),
 
   /* Gambar langit, bukit, platform dan teks. ctx sudah diskala dpr; cw/ch = ukuran CSS kanvas. */
-  draw(ctx, cw, ch, camX, scale, texts, selId, platforms, offY, sky) {
+  draw(ctx, cw, ch, camX, scale, texts, selId, platforms, offY, sky, bgImg) {
     offY = offY || 0;
+    const useBg = bgImg && bgImg.naturalWidth;
+    if (useBg) {
+      const bh = ch, bw = bgImg.naturalWidth * bh / bgImg.naturalHeight, by = 0;
+      const sx = -((camX * scale * 0.3) % bw);
+      for (let x = sx; x < cw; x += bw) ctx.drawImage(bgImg, Math.floor(x), by, Math.ceil(bw) + 1, bh);
+    }
     const g = ctx.createLinearGradient(0, 0, 0, ch);
     if (sky) { g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); }
     else { g.addColorStop(0, '#0d1330'); g.addColorStop(0.62, '#1a1d4a'); g.addColorStop(1, '#2b2262'); }
-    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+    if (!useBg) { ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch); }
+    if (!useBg) {
     const mx = cw * 0.8 - camX * scale * 0.04, my = ch * 0.2, mr = ch * 0.07;
     const mg = ctx.createRadialGradient(mx, my, mr * 0.3, mx, my, mr * 3.2);
     mg.addColorStop(0, 'rgba(160,255,238,.35)'); mg.addColorStop(1, 'rgba(160,255,238,0)');
@@ -46,6 +53,7 @@ const World = {
     };
     hills('#171a45', 290, 26, 0.004, 0.25);
     hills('#12183c', 315, 18, 0.007, 0.5);
+    }
 
     ctx.save(); ctx.translate(-camX * scale, offY); ctx.scale(scale, scale);
     for (const pl of (platforms || this.defaultPlatforms)) {
@@ -153,6 +161,7 @@ const Play = (() => {
     if (!an.idle) an.idle = an.walk || an.jump;
     if (!an.idle) return toast('Belum ada animasi bernama Idle, Walk, atau Jump yang ada framenya.', 4000);
     if (S.project === project) await flush();
+    await Packs.ready;
 
     const imgs = [];
     for (const s of project.sprites) for (const q of s.anims) for (const f of q.frames) imgs.push(getImg(f));
@@ -201,6 +210,7 @@ const Play = (() => {
     a.scenes.set('utama', { platforms: Pro.platforms, texts: Pro.texts, entities: a.entities, start: { x: 80, y: World.groundY } });
     const E = makeEnv(a, Pro, P, project);
     a.E = E;
+    PlayExt.init(a, E, Pro, P, project, opts, { stop, restart: () => { const pr = project, o = opts; stop(); setTimeout(() => start(pr, o), 60); } });
 
     root.querySelector('.pro-exit').addEventListener('click', stop);
     cv.addEventListener('pointerdown', e => {
@@ -241,6 +251,7 @@ const Play = (() => {
   function report(a, err, tag) {
     const msg = err && err.cm ? err.pretty() : String(err && err.message || err);
     console.error(err);
+    if (a.E && a.E.log) a.E.log(msg, 'err');
     if (a.lastErr !== msg) { a.lastErr = msg; toast((tag ? tag + ': ' : '') + msg, 5200); }
   }
 
@@ -385,8 +396,13 @@ const Play = (() => {
     };
 
     /* suara */
-    const sound = name => (project.sounds || []).find(s => lc(s.name) === lc(name)) || null;
-    E.soundNames = () => (project.sounds || []).map(s => s.name);
+    const sound = name => {
+      const s = (project.sounds || []).find(q => lc(q.name) === lc(name));
+      if (s) return { name: s.name, src: Packs.url(s.src) };
+      if (Packs.has(lc(name))) return { name: lc(name), src: Packs.url('pack:' + lc(name)) };
+      return null;
+    };
+    E.soundNames = () => (project.sounds || []).map(s => s.name).concat(Packs.data.music.map(m => m.name), Packs.data.sfx);
     E.sfx = (name, vol) => {
       vol = vol == null ? 1 : vol;
       const s = sound(name);
@@ -477,7 +493,7 @@ const Play = (() => {
     a.raf = requestAnimationFrame(tick);
     const dt = Math.min(0.034, Math.max(0.001, (t - a.last) / 1000)); a.last = t;
     if (a.root.clientWidth !== a.w || a.root.clientHeight !== a.h) fit(a);
-    try { step(a, dt); } catch (err) { report(a, err, 'Mesin'); }
+    if (!a.paused) { try { step(a, dt); } catch (err) { report(a, err, 'Mesin'); } }
     if (A !== a) return;
     draw(a, t);
   }
@@ -564,6 +580,7 @@ const Play = (() => {
     for (const p of a.particles) { p.life -= dt; p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
     if (a.particles.length) a.particles = a.particles.filter(p => p.life > 0);
 
+    PlayExt.step(a, dt);
     E.dispatch('update', [dt]);
     fire('update', dt);
   }
@@ -579,13 +596,13 @@ const Play = (() => {
     if (a.clock < a.shakeUntil) { camX += (Math.random() - 0.5) * a.shakeAmp * 2 / scale; offY += (Math.random() - 0.5) * a.shakeAmp * 2; }
     a.scale = scale; a.offY = offY;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    World.draw(ctx, w, h, camX, scale, Pro.texts, null, Pro.platforms, offY, a.sky);
+    World.draw(ctx, w, h, camX, scale, Pro.texts, null, Pro.platforms, offY, a.sky, a.bgImg);
 
     ctx.save(); ctx.translate(-camX * scale, offY); ctx.scale(scale, scale);
     // entitas
     for (const e of a.entities) {
       if (e.hidden) continue;
-      const n = e.anim.frames.length, im = getImg(e.anim.frames[Math.floor(Math.max(0, a.clock - e.t0) * e.anim.fps) % n]);
+      const n = e.anim.frames.length, im = getImg(e.anim.frames[PlayExt.frameIdx(e.anim, a.clock - e.t0, n)]);
       if (!im.naturalWidth) continue;
       const dw = im.naturalWidth * e.unit, dh = im.naturalHeight * e.unit, fl = (e.facing < 0) !== !!e.flip ? -1 : 1;
       ctx.save(); ctx.translate(e.x, e.y); ctx.scale(fl, 1); ctx.drawImage(im, -dw / 2, -dh, dw, dh); ctx.restore();
@@ -596,7 +613,7 @@ const Play = (() => {
       for (const pl of Pro.platforms) if (pl.y >= P.y - 1 && P.x > pl.x && P.x < pl.x + pl.w && (!under || pl.y < under.y)) under = pl;
       if (under) { const k = clamp(1 - (under.y - P.y) / 160, 0.15, 1); ctx.fillStyle = 'rgba(0,0,0,' + 0.35 * k + ')'; ctx.beginPath(); ctx.ellipse(P.x, under.y + 1, a.hw * 1.1 * k, 4 * k, 0, 0, 7); ctx.fill(); }
       const an = a.cur, n = an.frames.length, isJump = an === a.an.jump;
-      const idx = isJump ? Math.min(Math.floor(a.animT * an.fps), n - 1) : Math.floor(a.animT * an.fps) % n;
+      const idx = isJump ? Math.min(Math.floor(a.animT * an.fps), n - 1) : PlayExt.frameIdx(an, a.animT, n);
       const img = getImg(an.frames[idx]);
       if (img.naturalWidth) {
         const blink = a.clock < a.invuln && Math.floor(a.clock * 14) % 2 === 0;
@@ -627,6 +644,7 @@ const Play = (() => {
       ctx.moveTo(P.x - 6, by + 27); ctx.lineTo(P.x, by + 36); ctx.lineTo(P.x + 6, by + 27); ctx.fill();
       ctx.fillStyle = '#10162a'; ctx.fillText(P.say.text, P.x, by + 14.5);
     } else if (P.say && pn >= P.say.until) P.say = null;
+    PlayExt.drawWorld(a, ctx);
     ctx.restore();
 
     // hujan (di ruang layar)
@@ -635,11 +653,13 @@ const Play = (() => {
       for (const d of a.rain.drops) { d.y += 0.016 * 1.8 * d.s; d.x -= 0.004 * d.s; if (d.y > 1.05) { d.y = -0.05; d.x = Math.random() * 1.1; } const x = d.x * w, y = d.y * h; ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14 * d.s); }
       ctx.stroke();
     }
+    PlayExt.drawScreen(a, ctx, w, h);
   }
 
   function stop() {
     const a = A; if (!a) return; A = null;
     cancelAnimationFrame(a.raf);
+    PlayExt.cleanup(a);
     for (const fn of a.handlers.stop.slice()) { try { fn(); } catch (e) { console.error(e); } }
     for (const [t, ty, fn, o] of a.listeners) t.removeEventListener(ty, fn, o);
     for (const s of a.styles) s.remove();

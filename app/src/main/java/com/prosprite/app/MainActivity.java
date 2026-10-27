@@ -15,6 +15,13 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import android.webkit.JavascriptInterface;
+import android.content.ContentValues;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
+import java.io.File;
+import java.io.FileOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
@@ -189,6 +196,39 @@ public class MainActivity extends Activity {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
             } catch (Exception e) { /* abaikan */ }
+        }
+
+        /** Simpan file ke folder Download (untuk ekspor proyek dan foto layar). */
+        @JavascriptInterface
+        public void saveFile(final String name, final String base64, final String mime) {
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    boolean ok = false; String msg = name;
+                    try {
+                        String safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+                        byte[] data = Base64.decode(base64, Base64.DEFAULT);
+                        if (Build.VERSION.SDK_INT >= 29) {
+                            ContentValues cv = new ContentValues();
+                            cv.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+                            cv.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                            cv.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                            Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                            if (uri == null) throw new Exception("gagal membuat file");
+                            OutputStream o = getContentResolver().openOutputStream(uri);
+                            o.write(data); o.close();
+                            ok = true;
+                        } else {
+                            File dir = getExternalFilesDir(null);
+                            File f = new File(dir, safe);
+                            FileOutputStream fo = new FileOutputStream(f);
+                            fo.write(data); fo.close();
+                            ok = true; msg = f.getAbsolutePath();
+                        }
+                    } catch (Exception e) { msg = String.valueOf(e.getMessage()); }
+                    final String js = "window.__nativeSaved && window.__nativeSaved(" + ok + "," + JSONObject.quote(msg) + ")";
+                    runOnUiThread(new Runnable() { @Override public void run() { if (web != null) web.evaluateJavascript(js, null); } });
+                }
+            }).start();
         }
 
         @JavascriptInterface

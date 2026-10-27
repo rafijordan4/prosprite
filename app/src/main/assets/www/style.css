@@ -215,3 +215,45 @@ code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-fam
 .cm-choices{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .cm-choices button{padding:8px 14px;border-radius:10px;background:var(--panel2);color:#fff;font-weight:600}
 .cm-flash{position:absolute;inset:0;pointer-events:none;z-index:3}
+
+/* ===== v4 ===== */
+.setgrp{margin:16px 0 4px;padding-top:10px;border-top:1px solid var(--line);font-weight:700;color:var(--accent);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.setmodal{max-height:88vh;overflow:auto}
+select.input{appearance:none;background:var(--panel2);color:var(--text)}
+.chips .chip{cursor:pointer}
+.toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.menulist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.tpl{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:3px;padding:12px 14px}
+.tpl small{color:var(--muted);font-weight:400;white-space:normal}
+.libmodal{width:min(720px,94vw);max-height:90vh;overflow:auto}
+.libtabs{margin:8px 0}
+.libtabs button{padding:6px 14px;border-radius:8px;color:var(--muted);font-weight:600}
+.libtabs button.on{background:var(--panel2);color:var(--text)}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.libgrid.sfx{display:flex;flex-wrap:wrap;gap:6px}
+.libcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+.libimg{width:100%;height:80px;display:grid;place-items:center;background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden}
+.libimg img{max-width:100%;max-height:100%;object-fit:contain}
+.libimg.wide img{width:100%;height:100%;object-fit:cover}
+.libbody{max-height:50vh;overflow:auto;padding:4px 2px}
+.warn{background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.4);padding:8px 10px;border-radius:10px;margin:8px 0;font-size:13px}
+.ctools{display:flex;gap:6px;padding:6px 8px;overflow:auto;border-bottom:1px solid var(--line);flex-wrap:nowrap}
+.ctools .btn{flex:none}
+/* mode Coba v4 */
+.pro-pause{position:absolute;top:12px;left:calc(max(14px,env(safe-area-inset-left)) + 104px);z-index:3;height:36px;width:40px;border-radius:12px;background:rgba(10,14,26,.7);color:#fff;border:1px solid var(--line)}
+.pro-menu{position:absolute;inset:0;z-index:20;background:rgba(5,8,18,.7);display:grid;place-items:center;backdrop-filter:blur(4px)}
+.pm-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 22px;display:flex;flex-direction:column;gap:8px;min-width:230px;text-align:center}
+.pm-card h3{margin:0 0 4px}
+.pm-big{font-size:46px}
+.pm-score{font-weight:800;color:#ffd166;font-size:18px;margin-bottom:4px}
+.cm-console{position:absolute;left:12px;bottom:170px;width:min(46%,380px);max-height:150px;overflow:auto;z-index:6;background:rgba(0,0,10,.7);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:11px/1.45 ui-monospace,monospace;color:#cfe;pointer-events:none}
+.cm-console .err{color:#ff8fa0}.cm-console .dim{color:#789}
+.cm-clock{background:rgba(8,12,28,.55);border:1px solid rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;letter-spacing:.04em}
+#play .cm-minimap{width:180px!important;height:40px!important;position:absolute;right:12px;top:48px;left:auto;border:1px solid rgba(255,255,255,.25);border-radius:6px}
+.cm-ach{position:absolute;left:50%;top:-80px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(14,20,40,.95);border:1px solid #ffd166;border-radius:14px;padding:10px 18px;color:#fff;transition:top .4s;pointer-events:none;z-index:7;animation:achIn .4s forwards}
+.cm-ach span{font-size:26px}.cm-ach b{color:#ffd166}
+.cm-ach.out{top:-90px!important;animation:none}
+@keyframes achIn{to{top:60px}}
+.gcard .stars{color:#ffd166;font-size:12px}
+.gsearch{display:flex;gap:8px;padding:0 4px 10px}
+.gsearch .input{flex:1}

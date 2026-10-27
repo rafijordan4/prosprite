@@ -507,6 +507,7 @@ const ACTS = {
   publish: () => Game.publish(),
   tutorial: () => Tutorial.open(),
   'file-add-cd': () => addFile('cd'),
+  'file-import': () => { const i = $('#code-in'); i.value = ''; i.click(); },
   code: () => showCode(),
   /* kode */
   'code-back': () => { renderEditor(); },
@@ -573,7 +574,7 @@ function renderCode() {
   $('#app').innerHTML = '<div class="codeview"><header class="topbar"><button class="icon-btn" data-act="code-back">' + I.back + '</button><b style="margin-left:4px">Kode</b><span class="small" style="margin-left:6px">JS + CSS proyek ini</span><div class="grow"></div>' +
     '<button class="btn" data-act="tutorial">Tutorial Cmode</button><button class="btn" data-act="code-help">API JS</button><button class="btn primary" data-act="play">' + I.play + '<span>Coba</span></button></header>' +
     '<div class="code-main"><aside class="panel"><div class="ph"><span>File</span></div>' + (files || '<div class="empty-hint">Belum ada file.</div>') +
-    '<div class="sep"></div><div class="row"><button class="btn sm grow" data-act="file-add-js">+ JS</button><button class="btn sm grow" data-act="file-add-css">+ CSS</button><button class="btn sm grow" data-act="file-add-cd">+ CD</button></div>' +
+    '<div class="sep"></div><div class="row"><button class="btn sm grow" data-act="file-add-js">+ JS</button><button class="btn sm grow" data-act="file-add-css">+ CSS</button><button class="btn sm grow" data-act="file-add-cd">+ CD</button></div><button class="btn sm block" style="margin-top:6px" data-act="file-import">Impor file (.cd .js .css)</button>' +
     '<button class="btn sm block" style="margin-top:6px" data-act="file-reset">Pasang kontrol bawaan</button></aside>' +
     '<section class="ecol">' + (f ? '<div class="fname"><input class="input" data-f="file-name" value="' + esc(f.name) + '" maxlength="32"><button class="icon-btn danger" data-act="file-del">' + I.trash + '</button></div>' +
       '<textarea id="code" data-f="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">' + esc(f.code) + '</textarea>' +
@@ -688,6 +689,17 @@ const App = {
     document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
     window.addEventListener('pagehide', flush);
     $('#file-in').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) importFiles(fs); });
+    $('#code-in').addEventListener('change', async e => {
+      const fs = [...e.target.files]; e.target.value = ''; if (!S.project) return;
+      let n = 0;
+      for (const f of fs) {
+        if (!/\.(cd|js|css)$/i.test(f.name)) { toast(f.name + ' dilewati (harus .cd/.js/.css)', 3500); continue; }
+        const code = await f.text(); const ex = S.project.scripts.find(x => x.name === f.name);
+        if (ex) ex.code = code; else { const nf = { id: uid(), name: f.name, code }; S.project.scripts.push(nf); S.fileId = nf.id; }
+        n++;
+      }
+      if (n) { dirty(); renderCode(); toast(n + ' file diimpor'); }
+    });
     $('#audio-in').addEventListener('change', async e => {
       const fs = [...e.target.files]; e.target.value = ''; if (!S.project) return;
       for (const f of fs) {

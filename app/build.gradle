@@ -10,8 +10,8 @@ android {
         applicationId 'com.prosprite.app'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 4
+        versionName '4.0'
     }
 
     // Keystore tetap supaya APK hasil build berikutnya bisa meng-update yang sudah terpasang
@@ -22,6 +22,10 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+    }
+
+    androidResources {
+        noCompress 'wav', 'jpg', 'png'
     }
 
     buildTypes {

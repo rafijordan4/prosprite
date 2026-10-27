@@ -1,0 +1,337 @@
+{
+ "sprites": [
+  {
+   "name": "Slime",
+   "anims": [
+    {
+     "name": "Slime",
+     "fps": 10,
+     "frames": [
+      "sprites/slime_slime_00.png",
+      "sprites/slime_slime_01.png",
+      "sprites/slime_slime_02.png",
+      "sprites/slime_slime_03.png",
+      "sprites/slime_slime_04.png",
+      "sprites/slime_slime_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Koin",
+   "anims": [
+    {
+     "name": "Koin",
+     "fps": 12,
+     "frames": [
+      "sprites/koin_koin_00.png",
+      "sprites/koin_koin_01.png",
+      "sprites/koin_koin_02.png",
+      "sprites/koin_koin_03.png",
+      "sprites/koin_koin_04.png",
+      "sprites/koin_koin_05.png",
+      "sprites/koin_koin_06.png",
+      "sprites/koin_koin_07.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Kelelawar",
+   "anims": [
+    {
+     "name": "Kelelawar",
+     "fps": 10,
+     "frames": [
+      "sprites/kelelawar_kelelawar_00.png",
+      "sprites/kelelawar_kelelawar_01.png",
+      "sprites/kelelawar_kelelawar_02.png",
+      "sprites/kelelawar_kelelawar_03.png",
+      "sprites/kelelawar_kelelawar_04.png",
+      "sprites/kelelawar_kelelawar_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Hati",
+   "anims": [
+    {
+     "name": "Hati",
+     "fps": 8,
+     "frames": [
+      "sprites/hati_hati_00.png",
+      "sprites/hati_hati_01.png",
+      "sprites/hati_hati_02.png",
+      "sprites/hati_hati_03.png",
+      "sprites/hati_hati_04.png",
+      "sprites/hati_hati_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Permata",
+   "anims": [
+    {
+     "name": "Permata",
+     "fps": 8,
+     "frames": [
+      "sprites/permata_permata_00.png",
+      "sprites/permata_permata_01.png",
+      "sprites/permata_permata_02.png",
+      "sprites/permata_permata_03.png",
+      "sprites/permata_permata_04.png",
+      "sprites/permata_permata_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Peti",
+   "anims": [
+    {
+     "name": "Peti",
+     "fps": 1,
+     "frames": [
+      "sprites/peti_peti_00.png"
+     ]
+    },
+    {
+     "name": "PetiBuka",
+     "fps": 1,
+     "frames": [
+      "sprites/peti_petibuka_00.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Pintu",
+   "anims": [
+    {
+     "name": "Pintu",
+     "fps": 1,
+     "frames": [
+      "sprites/pintu_pintu_00.png"
+     ]
+    },
+    {
+     "name": "PintuBuka",
+     "fps": 1,
+     "frames": [
+      "sprites/pintu_pintubuka_00.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Bendera",
+   "anims": [
+    {
+     "name": "Bendera",
+     "fps": 10,
+     "frames": [
+      "sprites/bendera_bendera_00.png",
+      "sprites/bendera_bendera_01.png",
+      "sprites/bendera_bendera_02.png",
+      "sprites/bendera_bendera_03.png",
+      "sprites/bendera_bendera_04.png",
+      "sprites/bendera_bendera_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Duri",
+   "anims": [
+    {
+     "name": "Duri",
+     "fps": 1,
+     "frames": [
+      "sprites/duri_duri_00.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Obor",
+   "anims": [
+    {
+     "name": "Obor",
+     "fps": 12,
+     "frames": [
+      "sprites/obor_obor_00.png",
+      "sprites/obor_obor_01.png",
+      "sprites/obor_obor_02.png",
+      "sprites/obor_obor_03.png",
+      "sprites/obor_obor_04.png",
+      "sprites/obor_obor_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Awan",
+   "anims": [
+    {
+     "name": "Awan",
+     "fps": 1,
+     "frames": [
+      "sprites/awan_awan_00.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Jamur",
+   "anims": [
+    {
+     "name": "Jamur",
+     "fps": 6,
+     "frames": [
+      "sprites/jamur_jamur_00.png",
+      "sprites/jamur_jamur_01.png",
+      "sprites/jamur_jamur_02.png",
+      "sprites/jamur_jamur_03.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Kunci",
+   "anims": [
+    {
+     "name": "Kunci",
+     "fps": 8,
+     "frames": [
+      "sprites/kunci_kunci_00.png",
+      "sprites/kunci_kunci_01.png",
+      "sprites/kunci_kunci_02.png",
+      "sprites/kunci_kunci_03.png",
+      "sprites/kunci_kunci_04.png",
+      "sprites/kunci_kunci_05.png"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Pegas",
+   "anims": [
+    {
+     "name": "Pegas",
+     "fps": 1,
+     "frames": [
+      "sprites/pegas_pegas_00.png"
+     ]
+    },
+    {
+     "name": "PegasTekan",
+     "fps": 1,
+     "frames": [
+      "sprites/pegas_pegastekan_00.png"
+     ]
+    }
+   ]
+  }
+ ],
+ "bg": [
+  {
+   "name": "gurun",
+   "title": "Gurun",
+   "night": false
+  },
+  {
+   "name": "hutan",
+   "title": "Hutan",
+   "night": false
+  },
+  {
+   "name": "gua",
+   "title": "Gua kristal",
+   "night": true
+  },
+  {
+   "name": "salju",
+   "title": "Salju",
+   "night": false
+  },
+  {
+   "name": "malam",
+   "title": "Kota malam",
+   "night": true
+  },
+  {
+   "name": "pantai",
+   "title": "Pantai",
+   "night": false
+  }
+ ],
+ "music": [
+  {
+   "name": "petualangan",
+   "title": "Petualangan ceria",
+   "sec": 38
+  },
+  {
+   "name": "malam_sunyi",
+   "title": "Malam yang tenang",
+   "sec": 51
+  },
+  {
+   "name": "gua_gelap",
+   "title": "Gua misterius",
+   "sec": 45
+  },
+  {
+   "name": "kota_ramai",
+   "title": "Kota ramai",
+   "sec": 43
+  },
+  {
+   "name": "santai_sore",
+   "title": "Sore santai",
+   "sec": 44
+  },
+  {
+   "name": "pertarungan",
+   "title": "Pertarungan",
+   "sec": 33
+  },
+  {
+   "name": "salju",
+   "title": "Salju turun",
+   "sec": 57
+  },
+  {
+   "name": "kemenangan",
+   "title": "Kemenangan",
+   "sec": 36
+  }
+ ],
+ "sfx": [
+  "lompat",
+  "koin",
+  "ledak",
+  "klik",
+  "luka",
+  "menang",
+  "kalah",
+  "bip",
+  "power",
+  "tembak",
+  "pintu",
+  "langkah",
+  "air",
+  "petir",
+  "level",
+  "buka",
+  "tutup",
+  "peringatan",
+  "sihir",
+  "pukul",
+  "lompat_tinggi",
+  "pegas",
+  "pecah"
+ ]
+}

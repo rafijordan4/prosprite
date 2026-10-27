@@ -280,6 +280,84 @@ const EVENTS = [
   ['scene_mulai(nama)', 'Dipanggil setelah pindah scene.']
 ];
 
+
+/* ====== kodule v4 ====== */
+DEFS.push(
+{ n: 'hari', judul: 'Siklus hari', desc: 'Pagi, siang, sore, malam, dan subuh dengan jam di tengah atas layar. Langit dan cahaya berubah halus. Urutan: Subuh, Pagi, Siang, Sore, Malam. Lama bawaan (detik): 50, 60, 60, 60, 90.', f: [
+  ['mulai', '(jam_tampil=True)', 'Mulai siklus hari dari pagi dan tampilkan jam.', 'hari.mulai()', (E, t) => { E.hariStart({ clock: d(t, true) }); return null; }],
+  ['atur_durasi', '(subuh, pagi, siang, sore, malam)', 'Atur lama tiap fase dalam detik nyata. Jam di game otomatis berjalan lebih cepat atau lambat.', 'hari.atur_durasi(50, 60, 60, 60, 90)', (E, a1, a2, a3, a4, a5) => { if (!E.a.hari) E.hariStart(); E.a.hari.dur = [a1, a2, a3, a4, a5].map((v, i) => clampN(E.num(v, 'durasi ' + (i + 1)), 5, 3600)); return null; }],
+  ['jam', '()', 'Jam sekarang di game (0 sampai 24, desimal).', 'if hari.jam() > 18: ...', E => E.hariJam()],
+  ['fase', '()', 'Nama fase sekarang: Subuh, Pagi, Siang, Sore, atau Malam.', 'print(hari.fase())', E => E.a.hari ? PlayExt.PHASE.nama[E.a.hari.fase] : ''],
+  ['atur_jam', '(jam)', 'Loncat ke jam tertentu.', 'hari.atur_jam(22)', (E, j) => { E.hariSetJam(E.num(j, 'jam')); return null; }],
+  ['jeda', '(ya=True)', 'Hentikan atau lanjutkan waktu.', 'hari.jeda()', (E, ya) => { if (E.a.hari) E.a.hari.paused = !!d(ya, true); return null; }],
+  ['kecepatan', '(n)', 'Percepat (2) atau perlambat (0.5) siklus hari.', 'hari.kecepatan(2)', (E, n) => { if (E.a.hari) E.a.hari.speed = clampN(E.num(n), 0.1, 20); return null; }],
+  ['jam_tampil', '(ya=True)', 'Tampilkan atau sembunyikan tulisan jam.', 'hari.jam_tampil(False)', (E, ya) => { if (E.a.hari) E.a.hari.clock = !!d(ya, true); return null; }],
+  ['berhenti', '()', 'Matikan siklus hari dan kembalikan langit.', 'hari.berhenti()', E => { E.a.hari = null; E.a.sky = null; E.a.tint = null; E.hudRemove('__jam'); return null; }]
+] },
+{ n: 'cuaca', judul: 'Cuaca', desc: 'Hujan, badai, salju, kabut, debu.', f: [
+  ['atur', '(jenis)', 'Jenis: "cerah", "hujan", "badai", "salju", "kabut", "debu".', 'cuaca.atur("salju")', (E, j) => { E.setWeather(E.text(j, 'Jenis cuaca')); return null; }],
+  ['hujan', '()', 'Hujan.', 'cuaca.hujan()', E => { E.setWeather('hujan'); return null; }],
+  ['salju', '()', 'Salju turun.', 'cuaca.salju()', E => { E.setWeather('salju'); return null; }],
+  ['cerah', '()', 'Hentikan semua cuaca.', 'cuaca.cerah()', E => { E.setWeather('cerah'); return null; }]
+] },
+{ n: 'checkpoint', judul: 'Checkpoint', desc: 'Titik simpan. Kalau pemain jatuh atau mati, kembali ke checkpoint terakhir di scene yang sama.', f: [
+  ['atur', '(x, y)', 'Jadikan titik x, y sebagai checkpoint.', 'checkpoint.atur(900, 340)', (E, x, y) => { E.setCheckpoint(E.num(x, 'x'), E.num(y, 'y')); return null; }],
+  ['di_sini', '()', 'Jadikan posisi pemain sekarang sebagai checkpoint.', 'checkpoint.di_sini()', E => { E.setCheckpoint(E.P.x, E.P.y); return null; }],
+  ['hapus', '()', 'Hapus checkpoint.', 'checkpoint.hapus()', E => { E.a.checkpoint = null; return null; }],
+  ['kembali', '()', 'Pindahkan pemain ke checkpoint.', 'checkpoint.kembali()', E => { E.resetPlayer(); return null; }]
+] },
+{ n: 'pintu', judul: 'Pintu & portal', desc: 'Pintu yang memindahkan pemain saat disentuh. Fungsi masuk_pintu(id) kalau ditulis menggantikan perilaku bawaan.', f: [
+  ['buat', '(id, animasi, x, y, scene="", tujuan_x=None, tujuan_y=None)', 'Buat pintu. Saat disentuh pemain pindah ke scene (kalau diisi) dan/atau ke titik tujuan.', 'pintu.buat("p1", "Pintu", 1500, 340, "", 100, 340)', (E, id, an, x, y, sc, tx, ty) => { E.entAdd('benda', sh(id), E.text(an, 'Nama animasi'), E.num(x, 'x'), E.num(y, 'y')); E.portalAdd(sh(id), x, y, sc ? sh(sc) : '', tx === undefined ? null : tx, ty === undefined ? null : ty); return null; }],
+  ['hapus', '(id)', 'Hapus pintu.', 'pintu.hapus("p1")', (E, id) => { E.portalRemove(sh(id)); E.entRemove(sh(id)); return null; }]
+] },
+{ n: 'pencapaian', judul: 'Pencapaian', desc: 'Lencana yang muncul sekali saja dan tersimpan.', f: [
+  ['buka', '(id, judul)', 'Buka pencapaian. Muncul banner kalau baru pertama kali. Mengembalikan True kalau baru.', 'pencapaian.buka("koin10", "Kolektor koin")', (E, id, t) => E.achUnlock(sh(id), sh(d(t, id)))],
+  ['sudah', '(id)', 'Benar kalau pencapaian sudah dibuka.', 'if pencapaian.sudah("koin10"): ...', (E, id) => E.saveHas('__ach_' + sh(id))],
+  ['daftar', '()', 'Daftar judul pencapaian yang sudah dibuka.', 'print(pencapaian.daftar())', E => E.achList()]
+] },
+{ n: 'tween', judul: 'Tween (animasi nilai)', desc: 'Mengubah angka dari a ke b secara halus; fungsi update dipanggil tiap frame dengan nilai sekarang.', f: [
+  ['mulai', '(nama, dari, ke, ms, update, selesai=None, gaya="linear")', 'Mulai tween. gaya: linear, masuk, keluar, halus, mantul, elastis.', 'tween.mulai("naik", 0, 100, 800, atur_x, None, "mantul")', (E, nama, a1, b1, ms, upd, done, gaya) => { E.tweenAdd(sh(nama), E.num(a1, 'dari'), E.num(b1, 'ke'), E.num(ms, 'ms'), d(gaya, 'linear'), Cmode.cb(upd), done ? Cmode.cb(done) : null); return null; }],
+  ['berhenti', '(nama)', 'Hentikan tween.', 'tween.berhenti("naik")', (E, n) => { E.tweenStop(sh(n)); return null; }],
+  ['gaya', '()', 'Daftar nama gaya.', 'print(tween.gaya())', E => E.easings()]
+] },
+{ n: 'senter', judul: 'Senter (gelap)', desc: 'Layar gelap dengan lingkaran cahaya di sekitar pemain, cocok untuk gua.', f: [
+  ['nyala', '(gelap=0.85, radius=150)', 'Gelapkan layar kecuali lingkaran di sekitar pemain. gelap: 0 sampai 1.', 'senter.nyala(0.9, 120)', (E, g, r) => { E.setDark(clampN(d(g, 0.85), 0, 1), clampN(d(r, 150), 40, 600)); return null; }],
+  ['mati', '()', 'Matikan efek gelap.', 'senter.mati()', E => { E.setDark(0); return null; }]
+] },
+{ n: 'melayang', judul: 'Teks melayang', desc: 'Angka atau teks yang naik lalu hilang di dunia (damage, +1, dll).', f: [
+  ['tampil', '(teks, x, y, warna="#ffffff", ukuran=20)', 'Munculkan teks melayang di x, y dunia.', 'melayang.tampil("+10", player.x(), player.y() - 60, "#ffd166")', (E, t, x, y, w, u) => { E.floatText(sh(t), E.num(x, 'x'), E.num(y, 'y'), d(w, '#ffffff'), d(u, 20)); return null; }],
+  ['di_pemain', '(teks, warna="#ffffff")', 'Teks melayang tepat di atas pemain.', 'melayang.di_pemain("Aduh!")', (E, t, w) => { E.floatText(sh(t), E.P.x, E.P.y - E.a.dh - 10, d(w, '#ffffff'), 22); return null; }]
+] },
+{ n: 'minimap', judul: 'Peta mini', desc: 'Peta kecil di pojok kanan atas: platform, item, musuh, dan pemain.', f: [
+  ['tampil', '(ya=True)', 'Tampilkan atau sembunyikan peta mini.', 'minimap.tampil()', (E, ya) => { E.minimapShow(!!d(ya, true)); return null; }]
+] },
+{ n: 'game', judul: 'Alur game', desc: 'Layar menang, kalah, jeda, dan mulai ulang.', f: [
+  ['menang', '(judul="Menang!", pesan="")', 'Tampilkan layar menang dengan skor.', 'game.menang("Selamat!", "Kamu sampai di ujung")', (E, t, m) => { E.gameEnd('menang', t ? sh(t) : '', m ? sh(m) : ''); return null; }],
+  ['kalah', '(judul="Game over", pesan="")', 'Tampilkan layar kalah.', 'game.kalah()', (E, t, m) => { E.gameEnd('kalah', t ? sh(t) : '', m ? sh(m) : ''); return null; }],
+  ['ulang', '()', 'Mulai ulang game dari awal.', 'game.ulang()', E => { E.hooks.restart(); return null; }],
+  ['jeda', '()', 'Jeda game (tanpa menu).', 'game.jeda()', E => { E.pause(true); return null; }],
+  ['lanjut', '()', 'Lanjutkan game.', 'game.lanjut()', E => { E.pause(false); return null; }],
+  ['menu', '()', 'Buka menu jeda.', 'game.menu()', E => { E.menu(); return null; }]
+] },
+{ n: 'papan', judul: 'Papan skor', desc: 'Daftar 10 skor tertinggi di HP ini.', f: [
+  ['tambah', '(nama, skor)', 'Catat skor. Mengembalikan peringkatnya (0 kalau tidak masuk 10 besar).', 'papan.tambah("Rafi", skor.sekarang())', (E, n, s) => E.boardAdd(sh(n), E.num(s, 'skor'))],
+  ['daftar', '()', 'Daftar teks "nama: skor", dari tertinggi.', 'print(papan.daftar())', E => E.boardList()],
+  ['tampil', '()', 'Tampilkan papan di dialog.', 'papan.tampil()', E => { const l = E.boardList(); E.dialog(l.length ? l.map((x, i) => (i + 1) + '. ' + x).join('\n') : 'Belum ada skor.', 'Papan skor'); return null; }],
+  ['hapus', '()', 'Hapus papan skor.', 'papan.hapus()', E => { E.boardClear(); return null; }]
+] }
+);
+/* tambahan fungsi di kodule lama */
+const addF = (mod, f) => DEFS.find(m => m.n === mod).f.push(f);
+addF('layar', ['latar', '(nama)', 'Ganti latar bergambar. Nama: gurun, hutan, gua, salju, malam, pantai. Kosong "" untuk latar bawaan.', 'layar.latar("hutan")', (E, n) => { E.setBg(n ? E.text(n, 'Nama latar') : ''); return null; }]);
+addF('layar', ['daftar_latar', '()', 'Daftar nama latar bawaan.', 'print(layar.daftar_latar())', () => Packs.data.bg.map(b => b.name)]);
+addF('sistem', ['getar', '(ms=60)', 'Getarkan HP.', 'sistem.getar(80)', (E, ms) => { try { navigator.vibrate && navigator.vibrate(clampN(d(ms, 60), 10, 1000)); } catch (e) { /* abaikan */ } return null; }]);
+addF('sistem', ['foto', '()', 'Foto layar, tersimpan di folder Download.', 'sistem.foto()', E => { E.screenshot(); return null; }]);
+addF('sistem', ['debug', '(ya=True)', 'Nyalakan kotak hitbox dan info FPS.', 'sistem.debug()', (E, ya) => { E.debugToggle(!!d(ya, true)); return null; }]);
+addF('sistem', ['konsol', '(ya=True)', 'Tampilkan konsol (hasil print dan error) di layar.', 'sistem.konsol()', (E, ya) => { E.consoleToggle(!!d(ya, true)); return null; }]);
+addF('music', ['bawaan', '()', 'Daftar musik bawaan aplikasi (petualangan, malam_sunyi, gua_gelap, kota_ramai, santai_sore, pertarungan, salju, kemenangan).', 'music.putar("petualangan")', () => Packs.data.music.map(m => m.name)]);
+addF('sfx', ['semua', '()', 'Daftar semua efek suara (bawaan dan dari tab Suara).', 'print(sfx.semua())', E => Packs.data.sfx.concat(Synth.names, E.soundNames())]);
+EVENTS.push(['masuk_pintu(id)', 'Dipanggil saat pemain menyentuh pintu buatan pintu.buat. Kalau ditulis, perpindahan bawaan tidak jalan.'], ['ganti_fase(nama)', 'Dipanggil saat fase hari berganti (Subuh, Pagi, Siang, Sore, Malam).']);
+
 const CModules = {
   defs: DEFS, events: EVENTS,
   build(E) {

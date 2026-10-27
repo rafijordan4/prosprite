@@ -1,0 +1,28 @@
+/* HERO - gaya jam, tombol ukuran, dan lapisan malam */
+.hero-jam {
+  background: rgba(8, 12, 28, .55);
+  border: 1px solid rgba(255, 255, 255, .15);
+  padding: 6px 16px;
+  border-radius: 999px;
+  letter-spacing: .04em;
+  backdrop-filter: blur(4px);
+}
+.cm-btn {
+  padding: 8px 14px;
+  white-space: nowrap;
+  font-size: 13px;
+  border-radius: 12px;
+  background: rgba(20, 27, 47, .85);
+  color: #fff;
+  border: 1px solid rgba(62, 232, 200, .6);
+}
+.cm-btn:active { transform: translate(-50%, -50%) scale(.95); }
+.hero-tint {
+  position: absolute;
+  inset: 0;
+  background: #0a1030;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  transition: opacity .4s linear;
+}

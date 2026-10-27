@@ -11,6 +11,9 @@
 <div id="app"></div>
 <div id="modal-root"></div>
 <div id="toast"></div>
+<input type="file" id="code-in" multiple hidden>
+<input type="file" id="proj-in" hidden>
+<input type="file" id="sheet-in" accept="image/*" hidden>
 <input type="file" id="audio-in" accept="audio/*" multiple hidden>
 <input type="file" id="file-in" accept="image/*" multiple hidden>
 <script src="defaults.js"></script>
@@ -18,8 +21,10 @@
 <script src="app.js"></script>
 <script src="cmodules.js"></script>
 <script src="play.js"></script>
+<script src="play_ext.js"></script>
 <script src="tutorial.js"></script>
 <script src="github.js"></script>
-<script>App.boot();</script>
+<script src="studio.js"></script>
+<script>Studio.init(); App.boot();</script>
 </body>
 </html>

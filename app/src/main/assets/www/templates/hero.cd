@@ -1,0 +1,86 @@
+{-- HERO: tombol ukuran + siklus pagi-malam --}
+{-- Pemain: ProSprite bernama "Hero" (animasi Idle + Walk, Jump boleh tidak ada) --}
+kodule player impor
+kodule walk impor
+kodule jump impor
+kodule gravity impor
+kodule collision impor
+kodule ui impor
+kodule button impor
+kodule layar impor
+kodule sfx impor
+
+{-- ====== Pengaturan ukuran: 4 mode ====== --}
+UKURAN = [1.5, 1, 0.5, 0.3]
+mode = 0
+
+{-- ====== Pengaturan waktu ======
+    Urutan: Subuh, Pagi, Siang, Sore, Malam, lalu ulang.
+    DURASI = lama tiap fase dalam detik nyata (Subuh 50 dtk, Pagi/Siang/Sore 1 menit, Malam 1,5 menit).
+    JAM_MULAI/JAM_AKHIR = jam di dalam game; jam berjalan lebih cepat atau lambat mengikuti durasi. --}
+NAMA = ["Subuh", "Pagi", "Siang", "Sore", "Malam"]
+IKON = ["🌄", "🌤", "☀", "🌇", "🌙"]
+DURASI = [50, 60, 60, 60, 90]
+JAM_MULAI = [4, 6, 11, 15, 18]
+JAM_AKHIR = [6, 11, 15, 18, 28]
+LANGIT_ATAS = [[70, 60, 110], [70, 150, 230], [40, 120, 220], [230, 120, 70], [8, 10, 35]]
+LANGIT_BAWAH = [[250, 170, 140], [190, 225, 250], [140, 200, 245], [250, 190, 110], [25, 30, 70]]
+fase = 1
+waktu_fase = 0
+
+def mulai():
+    player.buat("Hero")
+    player.skala(UKURAN[0])
+    gravity.atur(9.8)
+    walk.atur_kecepatan(5)
+    jump.atur_tinggi(12)
+    collision.aktif()
+    button.buat("ukuran", "Kecil Besar " + str(UKURAN[0]) + "x", 89, 20, ganti_ukuran)
+    tampil_jam()
+    atur_langit()
+
+{-- Tombol Kecil Besar: 1.5 -> 1 -> 0.5 -> 0.3 -> kembali ke 1.5 --}
+def ganti_ukuran(id):
+    mode = (mode + 1) % 4
+    player.skala(UKURAN[mode])
+    sfx.putar("klik")
+    button.ubah("ukuran", "Kecil Besar " + str(UKURAN[mode]) + "x")
+
+def update(dt):
+    waktu_fase = waktu_fase + dt
+    jika waktu_fase >= DURASI[fase]:
+        waktu_fase = waktu_fase - DURASI[fase]
+        fase = (fase + 1) % 5
+    tampil_jam()
+    atur_langit()
+
+def dua(n):
+    jika n < 10:
+        return "0" + str(n)
+    return str(n)
+
+{-- Jam di tengah atas layar (ikut layar, bukan di panggung) --}
+def tampil_jam():
+    p = waktu_fase / DURASI[fase]
+    jam = (JAM_MULAI[fase] + (JAM_AKHIR[fase] - JAM_MULAI[fase]) * p) % 24
+    j = int(jam)
+    m = int((jam - j) * 60)
+    ui.teks("jam", IKON[fase] + " " + dua(j) + ":" + dua(m) + "  " + NAMA[fase], 50, 7, 22, "#ffffff")
+
+def campur(a, b, t):
+    return int(a + (b - a) * t)
+
+def warna(tabel, i, k, p):
+    r = campur(tabel[i][0], tabel[k][0], p)
+    g = campur(tabel[i][1], tabel[k][1], p)
+    b = campur(tabel[i][2], tabel[k][2], p)
+    return "rgb(" + str(r) + "," + str(g) + "," + str(b) + ")"
+
+{-- Warna langit berubah halus selama 10 detik terakhir tiap fase --}
+def atur_langit():
+    sisa = DURASI[fase] - waktu_fase
+    p = 0
+    jika sisa < 10:
+        p = (10 - sisa) / 10
+    nxt = (fase + 1) % 5
+    layar.warna_langit(warna(LANGIT_ATAS, fase, nxt, p), warna(LANGIT_BAWAH, fase, nxt, p))

@@ -80,8 +80,8 @@ const Game = (() => {
   const slug = s => (s || 'game').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'game';
   function packProject(p) {
     return {
-      v: 1, name: p.name, playerId: p.playerId,
-      sprites: p.sprites, texts: p.texts, sounds: p.sounds || [],
+      v: 2, name: p.name, playerId: p.playerId,
+      sprites: p.sprites, texts: p.texts, sounds: p.sounds || [], settings: p.settings || {}, platforms: p.platforms || null, objects: p.objects || [],
       scripts: p.scripts.filter(f => /\.cd$/i.test(f.name)).map(f => ({ name: f.name, code: f.code }))
     };
   }
@@ -95,18 +95,22 @@ const Game = (() => {
     if (!p.scripts.some(f => /\.cd$/i.test(f.name))) return toast('Game butuh minimal satu file .cd di tab Kode', 3500);
     let lg = getLogin(); if (!lg) { lg = await loginModal(); if (!lg) return; }
     const upd = p.published && p.published.repo && p.published.repo.startsWith(lg.user.login + '/');
+    let desc = p.published && p.published.desc || '';
+    const dsc = await askText('Deskripsi singkat game (boleh kosong)', desc, 'mis. Platformer slime dan koin');
+    if (dsc === null && !await askConfirm('Lanjut publish tanpa deskripsi?', 'Lanjut')) return;
+    desc = (dsc || '').slice(0, 120);
     const ok = await askConfirm((upd ? 'Perbarui game "' : 'Publish "') + p.name + '" ke GitHub-mu sebagai repo PUBLIK? Semua orang bisa melihat sprite, suara, dan kode .cd-nya. File JS/CSS tidak ikut.', upd ? 'Perbarui' : 'Publish');
     if (!ok) return;
     const t = toast.bind(null); t('Mengunggah...', 60000);
     try {
-      await flush();
+      await flush(); try { await Studio.backupNow('sebelum publish'); } catch (e) { /* abaikan */ }
       const json = JSON.stringify(packProject(p));
       if (json.length > 30 * 1024 * 1024) throw new Error('Proyek terlalu besar (' + Math.round(json.length / 1048576) + ' MB, maks 30 MB). Kecilkan jumlah frame / suara.');
       let owner = lg.user.login, repo;
       if (upd) repo = p.published.repo.split('/')[1];
       else {
         repo = 'prosprite-' + slug(p.name) + '-' + Math.random().toString(36).slice(2, 6);
-        await api('/user/repos', { method: 'POST', body: { name: repo, description: 'Game ProSprite: ' + p.name, homepage: '', private: false } });
+        await api('/user/repos', { method: 'POST', body: { name: repo, description: 'Game ProSprite: ' + p.name + (desc ? ' - ' + desc : ''), homepage: '', private: false } });
         await new Promise(z => setTimeout(z, 1200));
       }
       await putFile(owner, repo, 'game.json', b64(json), 'Publish game');
@@ -114,7 +118,8 @@ const Game = (() => {
       if (th && th.startsWith('data:image/png')) { try { await putFile(owner, repo, 'cover.png', th.split(',')[1], 'Cover'); } catch (e) { console.warn(e); } }
       await putFile(owner, repo, 'README.md', b64('# ' + p.name + '\n\nGame dibuat dengan **ProSprite** (Cmode).\n\nBuka aplikasi ProSprite, tab Game, cari "' + p.name + '" lalu tekan Main.\n'), 'README');
       await api('/repos/' + owner + '/' + repo + '/topics', { method: 'PUT', body: { names: [TOPIC] } });
-      p.published = { repo: owner + '/' + repo, at: Date.now() }; dirty(); await flush();
+      if (upd && desc) { try { await api('/repos/' + owner + '/' + repo, { method: 'PATCH', body: { description: 'Game ProSprite: ' + p.name + ' - ' + desc } }); } catch (e) { /* abaikan */ } }
+      p.published = { repo: owner + '/' + repo, at: Date.now(), desc }; dirty(); await flush();
       toast('Terpublish! github.com/' + owner + '/' + repo, 5000);
     } catch (e) { console.error(e); toast('Gagal publish: ' + e.message, 6000); }
   }
@@ -125,11 +130,16 @@ const Game = (() => {
   const num = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
   function sanitize(g, full) {
     if (!g || typeof g !== 'object') throw new Error('Data game rusak');
-    const p = { id: 'remote_' + slug(full), name: str(g.name, 40) || 'Game', updated: Date.now(), sprites: [], texts: [], sounds: [], scripts: [], playerId: null };
+    const p = { id: 'remote_' + slug(full), name: str(g.name, 40) || 'Game', updated: Date.now(), sprites: [], texts: [], sounds: [], scripts: [], playerId: null, settings: {}, platforms: null, objects: [] };
+    const gs = g.settings && typeof g.settings === 'object' ? g.settings : {};
+    for (const k of Object.keys(DEFAULT_SETTINGS)) { const dv = DEFAULT_SETTINGS[k], v = gs[k]; if (typeof dv === 'boolean') p.settings[k] = !!v; else if (typeof dv === 'number') p.settings[k] = num(v, -10000, 10000, dv); else p.settings[k] = typeof v === 'string' ? v.slice(0, 30) : dv; }
+    p.settings.debug = false;
+    if (Array.isArray(g.platforms)) p.platforms = g.platforms.slice(0, 80).map(q => ({ x: num(q.x, -100, 2000, 0), y: num(q.y, -100, 500, 0), w: num(q.w, 10, 3000, 100), h: num(q.h, 4, 100, 16) }));
+    for (const o of (Array.isArray(g.objects) ? g.objects : []).slice(0, 150)) p.objects.push({ id: str(o.id, 20).replace(/[^\w]/g, '') || 'o' + p.objects.length, kind: ['benda', 'item', 'musuh'].includes(o.kind) ? o.kind : 'benda', anim: str(o.anim, 24), x: num(o.x, -100, 2000, 0), y: num(o.y, -100, 500, 0), range: num(o.range, 10, 800, 120), speed: num(o.speed, 5, 400, 60), physics: !!o.physics });
     for (const s of (Array.isArray(g.sprites) ? g.sprites : []).slice(0, 20)) {
       const sp = { id: str(s.id, 24), name: str(s.name, 24), scale: num(s.scale, 0.2, 5, 1), anims: [] };
       for (const a of (Array.isArray(s.anims) ? s.anims : []).slice(0, 30)) {
-        const an = { id: str(a.id, 24), name: str(a.name, 24), fps: num(a.fps, 1, 60, 10), frames: [] };
+        const an = { id: str(a.id, 24), name: str(a.name, 24), fps: num(a.fps, 1, 60, 10), frames: [], mode: ['loop', 'sekali', 'pingpong'].includes(a.mode) ? a.mode : 'loop' };
         for (const f of (Array.isArray(a.frames) ? a.frames : []).slice(0, 80)) if (typeof f === 'string' && f.length < 4e6 && IMG_RE.test(f)) an.frames.push(f);
         sp.anims.push(an);
       }
@@ -137,7 +147,7 @@ const Game = (() => {
     }
     p.playerId = g.playerId ? str(g.playerId, 24) : null;
     for (const t of (Array.isArray(g.texts) ? g.texts : []).slice(0, 100)) p.texts.push({ id: str(t.id, 24) || uid(), name: str(t.name, 20).replace(/[^\w]/g, ''), text: str(t.text, 80), x: num(t.x, -500, 3000, 0), y: num(t.y, -200, 600, 0), size: num(t.size, 8, 120, 24), color: /^#[0-9a-fA-F]{3,8}$/.test(t.color) ? t.color : '#ffffff' });
-    for (const s of (Array.isArray(g.sounds) ? g.sounds : []).slice(0, 30)) if (typeof s.src === 'string' && s.src.length < 3e6 && AUD_RE.test(s.src)) p.sounds.push({ id: str(s.id, 24), name: str(s.name, 20).replace(/[^\w]/g, ''), src: s.src });
+    for (const s of (Array.isArray(g.sounds) ? g.sounds : []).slice(0, 30)) if (typeof s.src === 'string' && s.src.length < 3e6 && (AUD_RE.test(s.src) || /^pack:[a-z0-9_]{1,30}$/.test(s.src))) p.sounds.push({ id: str(s.id, 24), name: str(s.name, 20).replace(/[^\w]/g, ''), src: s.src });
     for (const f of (Array.isArray(g.scripts) ? g.scripts : []).slice(0, 20)) if (/^[\w.-]{1,32}\.cd$/i.test(f.name || '') && typeof f.code === 'string' && f.code.length < 200000) p.scripts.push({ id: uid(), name: f.name, code: f.code });
     if (!p.scripts.length) throw new Error('Game ini tidak punya kode Cmode');
     return p;
@@ -156,17 +166,26 @@ const Game = (() => {
   /* ---- beranda Game & Akun ---- */
   const cover = r => 'https://raw.githubusercontent.com/' + r.full_name + '/' + (r.default_branch || 'main') + '/cover.png';
   const card = (r, mine) => '<div class="pcard gcard"><button class="pthumb" data-act="g-play" data-full="' + esc(r.full_name) + '" data-br="' + esc(r.default_branch || 'HEAD') + '"><img src="' + esc(cover(r)) + '" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'empty\',textContent:\'Tanpa cover\'}))"></button>' +
-    '<div class="pinfo"><b>' + esc((r.description || r.name).replace(/^Game ProSprite: /, '')) + '</b><span class="small">oleh ' + esc(r.owner.login) + '</span></div>' +
-    '<div class="pacts"><button class="btn sm primary grow" data-act="g-play" data-full="' + esc(r.full_name) + '" data-br="' + esc(r.default_branch || 'HEAD') + '">Main</button>' + (mine ? '<button class="icon-btn sm danger" data-act="g-unlist" data-full="' + esc(r.full_name) + '">' + I.trash + '</button>' : '') + '</div></div>';
+    '<div class="pinfo"><b>' + esc((r.description || r.name).replace(/^Game ProSprite: /, '')) + '</b><span class="small">oleh ' + esc(r.owner.login) + ' <span class="stars">\u2605 ' + (r.stargazers_count || 0) + '</span></span></div>' +
+    '<div class="pacts"><button class="btn sm primary grow" data-act="g-play" data-full="' + esc(r.full_name) + '" data-br="' + esc(r.default_branch || 'HEAD') + '">Main</button>' + '<button class="icon-btn sm" title="Bintangi" data-act="g-star" data-full="' + esc(r.full_name) + '">\u2605</button><button class="btn sm" data-act="g-remix" data-full="' + esc(r.full_name) + '" data-br="' + esc(r.default_branch || 'HEAD') + '">Remix</button>' + (mine ? '<button class="icon-btn sm danger" data-act="g-unlist" data-full="' + esc(r.full_name) + '">' + I.trash + '</button>' : '') + '</div></div>';
   const needLogin = () => '<div class="gate"><div class="logo">' + I.ghost + '</div><b>Login GitHub dulu</b><p class="small">Beranda Game dan Akun butuh login GitHub.</p><button class="btn primary" data-act="g-login">Login GitHub</button></div>';
 
+  let gItems = [], gQ = '', gSort = 'updated';
+  function paintGames(host) {
+    let L = gItems.filter(r => !gQ || (r.name + ' ' + (r.description || '') + ' ' + r.owner.login).toLowerCase().includes(gQ));
+    L = L.slice().sort((x, y) => gSort === 'stars' ? (y.stargazers_count || 0) - (x.stargazers_count || 0) : new Date(y.updated_at) - new Date(x.updated_at));
+    const box = $('#glist', host); if (box) box.innerHTML = L.length ? L.map(i => card(i, false)).join('') : '<div class="empty-hint" style="grid-column:1/-1">' + (gItems.length ? 'Tidak ada yang cocok.' : 'Belum ada game dipublish. Jadilah yang pertama!') + '</div>';
+  }
   async function renderGame(host) {
     if (!getLogin()) { host.innerHTML = needLogin(); return; }
     host.innerHTML = '<div class="small" style="padding:20px">Memuat daftar game...</div>';
     try {
-      const r = await api('/search/repositories?q=' + encodeURIComponent('topic:' + TOPIC) + '&sort=updated&per_page=40');
-      const items = (r.data && r.data.items) || [];
-      host.innerHTML = '<div class="proj-grid">' + (items.length ? items.map(i => card(i, false)).join('') : '<div class="empty-hint" style="grid-column:1/-1">Belum ada game dipublish. Jadilah yang pertama!</div>') + '</div>';
+      const r = await api('/search/repositories?q=' + encodeURIComponent('topic:' + TOPIC) + '&sort=updated&per_page=60');
+      gItems = (r.data && r.data.items) || [];
+      host.innerHTML = '<div class="gsearch"><input class="input" id="gq" placeholder="Cari game atau pembuat..." value="' + esc(gQ) + '"><select class="input" id="gsort" style="max-width:150px"><option value="updated"' + (gSort === 'updated' ? ' selected' : '') + '>Terbaru</option><option value="stars"' + (gSort === 'stars' ? ' selected' : '') + '>Bintang terbanyak</option></select><button class="btn" data-act="g-reload">Muat ulang</button></div><div class="proj-grid" id="glist"></div>';
+      $('#gq', host).oninput = e => { gQ = e.target.value.trim().toLowerCase(); paintGames(host); };
+      $('#gsort', host).onchange = e => { gSort = e.target.value; paintGames(host); };
+      paintGames(host);
     } catch (e) { host.innerHTML = '<div class="gate"><b>Gagal memuat</b><p class="small">' + esc(e.message) + '</p><button class="btn" data-act="g-reload">Coba lagi</button></div>'; }
   }
   async function renderAkun(host) {
@@ -183,6 +202,16 @@ const Game = (() => {
     'g-login': async () => { await loginModal(); showHome(); },
     'g-logout': async () => { if (await askConfirm('Keluar dari GitHub di aplikasi ini?', 'Keluar')) { logout(); S.homeTab = 'proj'; showHome(); } },
     'g-play': b => playRemote(b.dataset.full, b.dataset.br),
+    'g-star': async b => { try { await api('/user/starred/' + b.dataset.full, { method: 'PUT', okStatus: [204] }); toast('Dibintangi \u2605'); } catch (e) { toast('Gagal: ' + e.message, 3500); } },
+    'g-remix': async b => {
+      try {
+        const full = b.dataset.full; toast('Mengambil game...', 20000);
+        const r = await fetch('https://raw.githubusercontent.com/' + full + '/' + (b.dataset.br || 'HEAD') + '/game.json', { cache: 'no-cache' });
+        if (!r.ok) throw new Error('game.json tidak ditemukan');
+        const p = sanitize(await r.json(), full); p.id = uid(); p.name = p.name + ' (remix)'; p.scripts.push({ id: uid(), name: 'kontrol.js', code: DEFAULT_JS }, { id: uid(), name: 'kontrol.css', code: DEFAULT_CSS });
+        await DB.put(p); S.homeTab = 'proj'; showHome(); toast('Disalin ke Proyek: ' + p.name + ' (hormati pembuat aslinya)', 4500);
+      } catch (e) { toast('Gagal remix: ' + e.message, 4500); }
+    },
     'g-reload': () => showHome(),
     'g-unlist': async b => {
       if (!await askConfirm('Hapus dari daftar Game? Repo di GitHub tetap ada (bisa kamu hapus sendiri di GitHub).', 'Hapus dari daftar')) return;
